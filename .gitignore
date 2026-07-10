@@ -1,0 +1,5 @@
+/dist/
+/third_party/windivert/*.dll
+/third_party/windivert/*.sys
+/third_party/windivert/*.lib
+*.exe
