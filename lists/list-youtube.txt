@@ -1,0 +1,12 @@
+# YouTube and its media/CDN domains.
+# One domain per line; a line matches the domain and all its subdomains.
+youtube.com
+youtu.be
+youtube-nocookie.com
+youtubei.googleapis.com
+yt.be
+ytimg.com
+ggpht.com
+googlevideo.com
+gvt1.com
+gvt2.com

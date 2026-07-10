@@ -1,0 +1,11 @@
+# Discord application, gateway and CDN domains.
+# Note: Discord VOICE traffic is UDP to bare IPs (no SNI) and is not covered by
+# SNI-based desync in v1; text/chat/CDN over TLS is.
+discord.com
+discord.gg
+discord.media
+discordapp.com
+discordapp.net
+discordcdn.com
+discordstatus.com
+stable.dl2.discordapp.net

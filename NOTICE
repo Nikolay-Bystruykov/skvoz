@@ -1,0 +1,16 @@
+Skvoz
+Copyright (c) 2026 Skvoz contributors
+Licensed under the MIT License (see LICENSE).
+
+This product depends on WinDivert, a user-mode packet capture-and-divert
+library for Windows.
+
+  WinDivert
+  https://github.com/basil00/WinDivert
+  Copyright (c) Basil00
+  Licensed under LGPLv3 / GPLv3 (dual). WinDivert binaries (WinDivert.dll,
+  WinDivert64.sys) are redistributed unmodified. See the WinDivert project
+  for full license text.
+
+Skvoz loads WinDivert at runtime via its public C API and does not modify or
+statically link WinDivert source code.

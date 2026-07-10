@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Test
+        run: go test ./...
+      - name: Vet (host)
+        run: go vet ./...
+      - name: Vet (windows)
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: go vet ./...
+      - name: Cross-build skvoz.exe
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: go build -o /tmp/skvoz.exe ./cmd/skvoz
