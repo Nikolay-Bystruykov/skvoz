@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master, main]
   pull_request:
 
 jobs:
@@ -21,9 +21,11 @@ jobs:
         env:
           GOOS: windows
           GOARCH: amd64
+          CGO_ENABLED: '0'
         run: go vet ./...
       - name: Cross-build skvoz.exe
         env:
           GOOS: windows
           GOARCH: amd64
+          CGO_ENABLED: '0'
         run: go build -o /tmp/skvoz.exe ./cmd/skvoz

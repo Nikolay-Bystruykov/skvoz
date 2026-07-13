@@ -19,13 +19,24 @@ jobs:
       - name: Test
         run: go test ./...
 
-      - name: Package release zip
+      - name: Build release binary
         run: |
-          chmod +x scripts/package.sh
+          chmod +x scripts/package.sh scripts/stage-assets.sh
           scripts/package.sh "${GITHUB_REF_NAME}"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/skvoz-*-windows-amd64.zip
+          files: |
+            dist/skvoz.exe
+            dist/skvoz.exe.sha256
           generate_release_notes: true
+          body: |
+            **Skvoz ${{ github.ref_name }}** — один файл, обход DPI для YouTube и Discord без VPN.
+
+            ## Установка
+            1. Скачайте **skvoz.exe** ниже.
+            2. Дважды кликните. Windows покажет SmartScreen — нажмите **Подробнее → Всё равно запустить** (файл не подписан — это разовое предупреждение).
+            3. Разрешите права администратора. В трее появится значок Skvoz. Готово — открывайте YouTube/Discord.
+
+            Автозапуск с Windows включается галкой в меню трея. Проверить целостность файла — по `skvoz.exe.sha256`.
