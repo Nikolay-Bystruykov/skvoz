@@ -153,8 +153,15 @@ func (u *trayUI) reconfigure() {
 		return
 	}
 
+	// Try the last known-good strategy first. A full re-sweep restarts the
+	// packet-capture handle once per candidate, which briefly disrupts any
+	// in-flight connections (e.g. a video mid-load) — worth avoiding when we
+	// already know a strategy that works.
+	known := autopick.Candidate{Strategy: u.state.Strategy, FakeTTL: u.state.FakeTTL}
+	candidates := autopick.PreferredFirst(known, autopick.Candidates())
+
 	u.setStatus("подбираю стратегию…")
-	u.log.Printf("reconfigure: probing host=%s over %d candidate strategies", host, len(autopick.Candidates()))
+	u.log.Printf("reconfigure: probing host=%s, trying known-good strategy=%s first, then %d more candidates", host, known.Strategy, len(candidates)-1)
 	cfg := config.Default()
 	apply := func(c autopick.Candidate) error {
 		cfg.Strategy = c.Strategy
@@ -166,7 +173,7 @@ func (u *trayUI) reconfigure() {
 	ctx, cancel := context.WithTimeout(context.Background(), autopickTimeout)
 	defer cancel()
 
-	picked, ok := autopick.Select(ctx, autopick.Candidates(), host, apply, loggingProber{inner: u.prober, log: u.log})
+	picked, ok := autopick.Select(ctx, candidates, host, apply, loggingProber{inner: u.prober, log: u.log})
 	if !ok {
 		// Nothing probed clean — keep the engine running on the saved strategy
 		// so the user still has a chance rather than nothing at all.

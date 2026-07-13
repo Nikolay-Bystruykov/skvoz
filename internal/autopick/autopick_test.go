@@ -79,6 +79,44 @@ func TestSelectSkipsCandidatesThatFailToApply(t *testing.T) {
 	}
 }
 
+func TestPreferredFirstMovesKnownGoodToFront(t *testing.T) {
+	all := Candidates() // fakedsplit, fake/6, fake/3, split, disorder
+	preferred := Candidate{Strategy: "disorder", FakeTTL: 0}
+
+	got := PreferredFirst(preferred, all)
+
+	if got[0] != preferred {
+		t.Fatalf("expected preferred candidate first, got %+v", got[0])
+	}
+	if len(got) != len(all) {
+		t.Fatalf("expected no duplicates: got %d candidates, want %d", len(got), len(all))
+	}
+	// Every original candidate must still be present exactly once.
+	counts := map[Candidate]int{}
+	for _, c := range got {
+		counts[c]++
+	}
+	for _, c := range all {
+		if counts[c] != 1 {
+			t.Fatalf("candidate %+v appears %d times, want 1", c, counts[c])
+		}
+	}
+}
+
+func TestPreferredFirstUnknownStrategyIsPrepended(t *testing.T) {
+	all := Candidates()
+	preferred := Candidate{Strategy: "totally-custom", FakeTTL: 99}
+
+	got := PreferredFirst(preferred, all)
+
+	if got[0] != preferred {
+		t.Fatalf("expected unknown preferred candidate first, got %+v", got[0])
+	}
+	if len(got) != len(all)+1 {
+		t.Fatalf("expected preferred candidate prepended (not deduped away): got %d, want %d", len(got), len(all)+1)
+	}
+}
+
 func TestCandidatesNonEmptyAndStartsWithRecommended(t *testing.T) {
 	c := Candidates()
 	if len(c) == 0 {

@@ -26,6 +26,24 @@ func Candidates() []Candidate {
 	}
 }
 
+// PreferredFirst reorders all so preferred is tried first, ahead of the usual
+// sweep. The caller uses this to retry the last strategy known to work before
+// falling back to a full re-sweep: probing every candidate from scratch on
+// every reconfiguration (e.g. a target checkbox toggle) closes and reopens the
+// packet-capture handle once per candidate, which briefly disrupts any
+// in-flight connections — disruptive enough to stall a video mid-load. If
+// preferred already restores access, that churn is skipped entirely.
+func PreferredFirst(preferred Candidate, all []Candidate) []Candidate {
+	out := make([]Candidate, 0, len(all)+1)
+	out = append(out, preferred)
+	for _, c := range all {
+		if c != preferred {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // Prober reports whether host is reachable under whatever strategy is currently
 // applied. A nil error means the connection (e.g. a TLS handshake) succeeded.
 type Prober interface {
