@@ -7,7 +7,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -28,16 +27,19 @@ import (
 var version = "dev"
 
 // guiLogger returns the logger used in tray mode. A GUI-subsystem binary has no
-// console, so diagnostics would be invisible; this tees them to
+// console, so diagnostics would be invisible; instead they go straight to
 // %LOCALAPPDATA%\Skvoz\skvoz.log so users can share it when something misbehaves.
+// We must NOT tee through os.Stderr: in a windowsgui process stderr is an
+// invalid handle, and io.MultiWriter aborts on the first writer's error, which
+// would leave the file empty. Write to the file only; fall back to stderr just
+// in case the file cannot be opened.
 func guiLogger() *log.Logger {
-	out := io.Writer(os.Stderr)
 	if dir, err := settings.Dir(); err == nil {
 		if f, err := os.OpenFile(filepath.Join(dir, "skvoz.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
-			out = io.MultiWriter(os.Stderr, f)
+			return log.New(f, "skvoz: ", log.LstdFlags)
 		}
 	}
-	return log.New(out, "skvoz: ", log.LstdFlags)
+	return log.New(os.Stderr, "skvoz: ", log.LstdFlags)
 }
 
 func main() {
