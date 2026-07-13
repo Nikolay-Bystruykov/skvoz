@@ -12,14 +12,38 @@ import (
 	"os/signal"
 	"path/filepath"
 
+	"github.com/skvoz/skvoz/internal/appmode"
 	"github.com/skvoz/skvoz/internal/config"
 	"github.com/skvoz/skvoz/internal/divert"
 	"github.com/skvoz/skvoz/internal/engine"
 	"github.com/skvoz/skvoz/internal/hostlist"
 	"github.com/skvoz/skvoz/internal/service"
+	"github.com/skvoz/skvoz/internal/tray"
+	"github.com/skvoz/skvoz/internal/winenv"
 )
 
+// version is stamped at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
+	// No arguments means a double-click: show the tray GUI. Any flag keeps the
+	// original command-line / service behavior.
+	if appmode.IsGUI(os.Args[1:]) {
+		logger := log.New(os.Stderr, "skvoz: ", log.LstdFlags)
+		logger.Printf("Skvoz %s starting (tray mode)", version)
+		if relaunched, err := winenv.EnsureElevated(); err != nil {
+			logger.Printf("could not elevate: %v", err)
+		} else if relaunched {
+			return // an elevated copy took over; this instance exits.
+		}
+		tray.Run(logger)
+		return
+	}
+
+	// Command-line mode: reattach to the parent terminal so a GUI-subsystem
+	// binary still prints output when run from a console.
+	winenv.AttachParentConsole()
+
 	cfg, err := config.Parse(os.Args[1:], os.Stderr)
 	if err != nil {
 		os.Exit(2)
@@ -101,8 +125,8 @@ func run(cfg config.Config, logger *log.Logger) int {
 		close(stop)
 	}()
 
-	logger.Printf("skvoz running (strategy=%s, quic=%s, domains=%d). Press Ctrl+C to stop.",
-		cfg.Strategy, cfg.QUIC, lists.Len())
+	logger.Printf("skvoz %s running (strategy=%s, quic=%s, domains=%d). Press Ctrl+C to stop.",
+		version, cfg.Strategy, cfg.QUIC, lists.Len())
 	if err := runEngine(stop); err != nil {
 		// A closed handle after a stop request is the normal shutdown path.
 		select {

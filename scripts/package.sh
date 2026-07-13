@@ -1,38 +1,31 @@
 #!/usr/bin/env bash
-# Build skvoz.exe and assemble a ready-to-use release zip:
-#   dist/skvoz-<version>-windows-amd64.zip
-# containing skvoz.exe, WinDivert binaries, domain lists, presets and README.
+# Build the single, self-contained Skvoz release binary:
+#   dist/skvoz.exe          - one file; driver + lists embedded
+#   dist/skvoz.exe.sha256   - checksum for the release page
 #
 # Usage: scripts/package.sh [version]
 set -euo pipefail
 
 VERSION="${1:-dev}"
-WINDIVERT_VER="2.2.2"
-WINDIVERT_URL="https://reqrypt.org/download/WinDivert-${WINDIVERT_VER}-A.zip"
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-STAGE="dist/skvoz-${VERSION}-windows-amd64"
-rm -rf "$STAGE"
-mkdir -p "$STAGE/lists"
+# Fetch the driver and copy lists into the embed dirs.
+scripts/stage-assets.sh
 
-echo ">> building skvoz.exe"
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o "$STAGE/skvoz.exe" ./cmd/skvoz
+echo ">> building skvoz.exe (${VERSION})"
+mkdir -p dist
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+  -ldflags "-s -w -H=windowsgui -X main.version=${VERSION}" \
+  -o dist/skvoz.exe ./cmd/skvoz
 
-echo ">> fetching WinDivert ${WINDIVERT_VER}"
-TMP="$(mktemp -d)"
-curl -fsSL "$WINDIVERT_URL" -o "$TMP/windivert.zip"
-unzip -q "$TMP/windivert.zip" -d "$TMP"
-cp "$TMP/WinDivert-${WINDIVERT_VER}-A/x64/WinDivert.dll"   "$STAGE/"
-cp "$TMP/WinDivert-${WINDIVERT_VER}-A/x64/WinDivert64.sys" "$STAGE/"
-rm -rf "$TMP"
+echo ">> checksum"
+if command -v sha256sum >/dev/null 2>&1; then
+  ( cd dist && sha256sum skvoz.exe > skvoz.exe.sha256 )
+else
+  ( cd dist && shasum -a 256 skvoz.exe > skvoz.exe.sha256 )
+fi
 
-echo ">> staging assets"
-cp lists/*.txt "$STAGE/lists/"
-cp presets/*.bat "$STAGE/"
-cp README.md LICENSE NOTICE "$STAGE/"
-
-echo ">> zipping"
-(cd dist && zip -qr "skvoz-${VERSION}-windows-amd64.zip" "skvoz-${VERSION}-windows-amd64")
-echo ">> done: dist/skvoz-${VERSION}-windows-amd64.zip"
+echo ">> done:"
+ls -la dist/skvoz.exe dist/skvoz.exe.sha256
+cat dist/skvoz.exe.sha256
