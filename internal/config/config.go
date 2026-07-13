@@ -1,6 +1,6 @@
-// Package config parses Skvoz's command-line configuration. The one-click .bat
-// presets simply invoke skvoz.exe with these flags, so this is the single
-// source of truth for runtime options.
+// Package config parses Skvoz's command-line configuration. It is the single
+// source of truth for the runtime options exposed to advanced users on the CLI
+// and to the Windows service; the tray GUI drives the engine directly.
 package config
 
 import (
