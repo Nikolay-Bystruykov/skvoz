@@ -11,6 +11,17 @@ import (
 // TLSProber must satisfy the autopick.Prober interface.
 var _ autopick.Prober = TLSProber{}
 
+func TestDefaultTimeoutIsShortEnoughForAFullSweep(t *testing.T) {
+	// autopick sweeps up to 5 candidates; a failing candidate blocks for the
+	// full timeout (context deadline exceeded), so a generous per-candidate
+	// timeout multiplies into a long, connection-disrupting worst case. 2s
+	// keeps a from-scratch sweep well under autopickTimeout while still
+	// giving a real handshake attempt a fair chance.
+	if DefaultTimeout != 2*time.Second {
+		t.Fatalf("DefaultTimeout = %v, want 2s", DefaultTimeout)
+	}
+}
+
 func TestProbeCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already cancelled: no network needed, must fail fast

@@ -11,9 +11,11 @@ import (
 	"time"
 )
 
-// DefaultTimeout bounds a single probe. Kept short so cycling through several
-// candidate strategies at startup stays snappy.
-const DefaultTimeout = 5 * time.Second
+// DefaultTimeout bounds a single probe. A failing candidate blocks for the
+// full timeout, and a from-scratch sweep tries up to 5 candidates, so this
+// directly sets the worst-case disruption of a full re-sweep; kept short so
+// that stays bounded while still giving a real handshake a fair chance.
+const DefaultTimeout = 2 * time.Second
 
 // TLSProber dials host:443 and performs a TLS handshake with SNI set to host.
 type TLSProber struct {
