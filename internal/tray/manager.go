@@ -45,12 +45,16 @@ func (m *Manager) Apply(cfg config.Config, lists *hostlist.List) error {
 
 	eng, err := engine.New(cfg, lists, m.log)
 	if err != nil {
+		m.log.Printf("engine.New failed (strategy=%s): %v", cfg.Strategy, err)
 		return err
 	}
+	m.log.Printf("opening WinDivert (filter=%s)", cfg.Filter())
 	src, err := m.open(cfg.Filter())
 	if err != nil {
+		m.log.Printf("WinDivert open FAILED: %v", err)
 		return err
 	}
+	m.log.Printf("WinDivert open OK; engine running (strategy=%s, ttl=%d, domains=%d)", cfg.Strategy, cfg.FakeTTL, lists.Len())
 	m.src = src
 	m.running = true
 	go func() {

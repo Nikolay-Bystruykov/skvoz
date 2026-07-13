@@ -7,6 +7,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -18,6 +19,7 @@ import (
 	"github.com/skvoz/skvoz/internal/engine"
 	"github.com/skvoz/skvoz/internal/hostlist"
 	"github.com/skvoz/skvoz/internal/service"
+	"github.com/skvoz/skvoz/internal/settings"
 	"github.com/skvoz/skvoz/internal/tray"
 	"github.com/skvoz/skvoz/internal/winenv"
 )
@@ -25,15 +27,29 @@ import (
 // version is stamped at build time via -ldflags "-X main.version=...".
 var version = "dev"
 
+// guiLogger returns the logger used in tray mode. A GUI-subsystem binary has no
+// console, so diagnostics would be invisible; this tees them to
+// %LOCALAPPDATA%\Skvoz\skvoz.log so users can share it when something misbehaves.
+func guiLogger() *log.Logger {
+	out := io.Writer(os.Stderr)
+	if dir, err := settings.Dir(); err == nil {
+		if f, err := os.OpenFile(filepath.Join(dir, "skvoz.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
+			out = io.MultiWriter(os.Stderr, f)
+		}
+	}
+	return log.New(out, "skvoz: ", log.LstdFlags)
+}
+
 func main() {
 	// No arguments means a double-click: show the tray GUI. Any flag keeps the
 	// original command-line / service behavior.
 	if appmode.IsGUI(os.Args[1:]) {
-		logger := log.New(os.Stderr, "skvoz: ", log.LstdFlags)
-		logger.Printf("Skvoz %s starting (tray mode)", version)
+		logger := guiLogger()
+		logger.Printf("Skvoz %s starting (tray mode, pid=%d, elevated=%v)", version, os.Getpid(), service.IsElevated())
 		if relaunched, err := winenv.EnsureElevated(); err != nil {
 			logger.Printf("could not elevate: %v", err)
 		} else if relaunched {
+			logger.Printf("relaunched with administrator rights; this instance exits")
 			return // an elevated copy took over; this instance exits.
 		}
 		tray.Run(logger)

@@ -59,10 +59,13 @@ func (u *trayUI) onReady() {
 	}
 	u.dir = dir
 	u.state, _ = settings.Load(dir)
+	u.log.Printf("tray onReady: dir=%s targets(yt=%v,dc=%v)", dir, u.state.YouTube, u.state.Discord)
 
 	// Unpack the embedded WinDivert driver next to the settings and load it.
 	if _, err := winenv.ExtractDriver(dir, assets.DriverFiles()); err != nil {
-		u.log.Printf("extract driver: %v", err)
+		u.log.Printf("extract driver FAILED: %v", err)
+	} else {
+		u.log.Printf("driver extracted to %s", dir)
 	}
 	divert.SetDriverDir(dir)
 
@@ -79,6 +82,7 @@ func (u *trayUI) onReady() {
 	systray.AddSeparator()
 	u.mQuit = systray.AddMenuItem("Выход", "Остановить Skvoz и выйти")
 
+	u.log.Printf("tray ready (icon shown); starting engine")
 	go u.loop()
 	go u.reconfigure()
 }
@@ -150,35 +154,56 @@ func (u *trayUI) reconfigure() {
 	}
 
 	u.setStatus("подбираю стратегию…")
+	u.log.Printf("reconfigure: probing host=%s over %d candidate strategies", host, len(autopick.Candidates()))
 	cfg := config.Default()
 	apply := func(c autopick.Candidate) error {
 		cfg.Strategy = c.Strategy
 		cfg.FakeTTL = c.FakeTTL
+		u.log.Printf("trying strategy=%s ttl=%d", c.Strategy, c.FakeTTL)
 		return u.mgr.Apply(cfg, lists)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), autopickTimeout)
 	defer cancel()
 
-	picked, ok := autopick.Select(ctx, autopick.Candidates(), host, apply, u.prober)
+	picked, ok := autopick.Select(ctx, autopick.Candidates(), host, apply, loggingProber{inner: u.prober, log: u.log})
 	if !ok {
 		// Nothing probed clean — keep the engine running on the saved strategy
 		// so the user still has a chance rather than nothing at all.
+		u.log.Printf("no strategy passed the probe; falling back to saved strategy=%s", u.state.Strategy)
 		cfg.Strategy = u.state.Strategy
 		cfg.FakeTTL = u.state.FakeTTL
 		if err := u.mgr.Apply(cfg, lists); err != nil {
 			u.setStatus("ошибка запуска")
-			u.log.Printf("apply fallback: %v", err)
+			u.log.Printf("apply fallback FAILED: %v", err)
 			return
 		}
 		u.setStatus("работает (стратегия по умолчанию)")
 		return
 	}
 
+	u.log.Printf("selected working strategy=%s ttl=%d for host=%s", picked.Strategy, picked.FakeTTL, host)
 	u.state.Strategy = picked.Strategy
 	u.state.FakeTTL = picked.FakeTTL
 	_ = u.state.Save(u.dir)
 	u.setStatus("работает ✓ (" + picked.Strategy + ")")
+}
+
+// loggingProber wraps a Prober to record each probe's outcome in the log, so a
+// support log shows exactly which strategy made a target reachable.
+type loggingProber struct {
+	inner autopick.Prober
+	log   *log.Logger
+}
+
+func (l loggingProber) Probe(ctx context.Context, host string) error {
+	err := l.inner.Probe(ctx, host)
+	if err != nil {
+		l.log.Printf("probe %s: FAIL (%v)", host, err)
+	} else {
+		l.log.Printf("probe %s: OK", host)
+	}
+	return err
 }
 
 // enabledLists returns the domain list for the currently-enabled targets plus a
