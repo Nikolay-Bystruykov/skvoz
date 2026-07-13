@@ -76,7 +76,7 @@ func run(cfg config.Config, logger *log.Logger) int {
 	}
 
 	if !service.IsElevated() {
-		logger.Printf("WARNING: not running as administrator; WinDivert will fail to open. Right-click and 'Run as administrator'.")
+		logger.Printf("WARNING: not elevated; packet capture will fail to open. To fix: %s", service.ElevationHint())
 	}
 
 	lists, err := loadLists(cfg, logger)

@@ -2,7 +2,10 @@
 
 package service
 
-import "errors"
+import (
+	"errors"
+	"os"
+)
 
 // Name is the service identifier (used in messages on all platforms).
 const Name = "Skvoz"
@@ -12,9 +15,14 @@ var errUnsupported = errors.New("Windows services are only available on Windows"
 // IsInteractive always reports true off Windows.
 func IsInteractive() (bool, error) { return true, nil }
 
-// IsElevated is a no-op that reports true off Windows (WinDivert itself is
-// unavailable there, so the caller fails later with a clear message).
-func IsElevated() bool { return true }
+// IsElevated reports whether the process is running as root, which the
+// packet-capture backend (BSD divert socket + pf) requires on this platform.
+func IsElevated() bool { return os.Geteuid() == 0 }
+
+// ElevationHint is shown to the user when IsElevated() is false.
+func ElevationHint() string {
+	return "run with root privileges, e.g.: sudo skvoz ..."
+}
 
 // Install is unsupported off Windows.
 func Install(args []string) error { return errUnsupported }

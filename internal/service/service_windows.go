@@ -43,6 +43,11 @@ func IsElevated() bool {
 	return err == nil && member
 }
 
+// ElevationHint is shown to the user when IsElevated() is false.
+func ElevationHint() string {
+	return "right-click skvoz.exe and choose 'Run as administrator'"
+}
+
 // Install registers the service to run the current executable with the given
 // arguments and start automatically at boot.
 func Install(args []string) error {
