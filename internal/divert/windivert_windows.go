@@ -4,6 +4,7 @@ package divert
 
 import (
 	"fmt"
+	"path/filepath"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -25,13 +26,30 @@ const (
 )
 
 var (
-	dll                = windows.NewLazyDLL("WinDivert.dll")
-	procOpen           = dll.NewProc("WinDivertOpen")
-	procRecv           = dll.NewProc("WinDivertRecv")
-	procSend           = dll.NewProc("WinDivertSend")
-	procClose          = dll.NewProc("WinDivertClose")
-	procCalcChecksums  = dll.NewProc("WinDivertHelperCalcChecksums")
+	dll               = windows.NewLazyDLL("WinDivert.dll")
+	procOpen          = dll.NewProc("WinDivertOpen")
+	procRecv          = dll.NewProc("WinDivertRecv")
+	procSend          = dll.NewProc("WinDivertSend")
+	procClose         = dll.NewProc("WinDivertClose")
+	procCalcChecksums = dll.NewProc("WinDivertHelperCalcChecksums")
 )
+
+// SetDriverDir points the loader at the directory that holds the WinDivert
+// binaries. The single-exe build extracts the embedded WinDivert.dll and
+// WinDivert64.sys into a per-user folder at runtime and calls this so the DLL
+// (and the .sys it loads next to itself) are found there. SetDllDirectory
+// ensures WinDivert64.sys is located beside the DLL. Call before opening a
+// source; the default (bare "WinDivert.dll" on the search path) is kept for the
+// classic layout where the binaries sit next to skvoz.exe.
+func SetDriverDir(dir string) {
+	_ = windows.SetDllDirectory(dir)
+	dll = windows.NewLazyDLL(filepath.Join(dir, "WinDivert.dll"))
+	procOpen = dll.NewProc("WinDivertOpen")
+	procRecv = dll.NewProc("WinDivertRecv")
+	procSend = dll.NewProc("WinDivertSend")
+	procClose = dll.NewProc("WinDivertClose")
+	procCalcChecksums = dll.NewProc("WinDivertHelperCalcChecksums")
+}
 
 // winDivertSource is the production PacketSource backed by the WinDivert driver.
 type winDivertSource struct {
